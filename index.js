@@ -6,20 +6,29 @@ const querystring = require('querystring');
 //create a server object:
 http.createServer(function (req, res) {
   console.log("method" + req.method);
-  res.writeHead(200, {'Content-Type': 'text/html'});
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Request methods you wish to allow
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  // Request headers you wish to allow
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,Content-Type');
+
+  // Set to true if you need the website to include cookies in the requests sent
+  // to the API (e.g. in case you use sessions)
+  res.setHeader('Access-Control-Allow-Credentials', true);
 
   let r = url.parse(req.url, true).pathname;
   let path = r.split('/');
   let cat = path[1]
   let directory = path[2]
   let file = path[3];
+  let nameFile = ""
 
   /*let category = []
   fs.readdirSync('./data').forEach(file => {
     category.push(file);
   })*/
 
-  if (r === `/${cat}` && directory === undefined) {
+  if (r === `/${cat}` && path.length === 2) {
     if (req.method === "GET"){
       let info = []
       fs.readdirSync(`./data`).forEach(file => {
@@ -29,7 +38,7 @@ http.createServer(function (req, res) {
     }
   }
 
-  if (r === `/${cat}/${directory}`) {
+  if (r === `/${cat}/${directory}` && path.length === 3) {
     if (req.method === "GET"){
       let info = []
       fs.readdirSync(`./data/${directory}`).forEach(file => {
@@ -39,30 +48,36 @@ http.createServer(function (req, res) {
     }
 
     if (req.method === "POST") {
+      res.writeHead(200, {'Content-Type': 'application/json'})
       let body = "";
+      let myData = ""
 
       let today = new Date();
       let date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
       let time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-      let timestamp = date + " " + time;
 
-      let myfile = (date+time).replace(/[^a-zA-Z0-9]/g, '');
-      let new_object = {
-        "directory": directory,
-        "timestamp": timestamp
-      }
+      let myTimeStampFile = (date+time).replace(/[^a-zA-Z0-9]/g, '');
 
-      console.log(timestamp);
+      req.on('data', chunk => {
+        body = chunk.toString();
+        myData = JSON.parse(body)
+        console.log(myData)
 
-      req.on('data', data => {
-        body = querystring.parse(data.toString());
+        console.log("woop")
+        console.log(myData)
+        console.log("MTSF:" + myTimeStampFile)
+
+        if(myData.id === ""){
+          nameFile = myTimeStampFile + "_" + myData.title.replace(/[^a-zA-Z0-9]/g, '_');
+          console.log("no_id " + nameFile)
+        } else if (myData.id !== "") {
+          nameFile = myTimeStampFile + "_" + (myData.id);
+          console.log("id " + nameFile)
+        }
       });
 
       req.on('end', () => {
-        let info = Object.assign(body,new_object)
-        let str = JSON.stringify(info)
-        console.log(str)
-        fs.writeFile(`./data/${directory}/${myfile}.json`, str, function (err) {
+        fs.writeFile(`./data/${directory}/${nameFile}.json`, JSON.stringify(myData), function (err) {
           if (err) throw err;
           console.log('Saved!');
         })
@@ -71,7 +86,14 @@ http.createServer(function (req, res) {
     }
   }
 
-  //console.log(r);
-  //console.log(path);
-  //console.log(file);
+  if (r === `/${cat}/${directory}/${file}` && path.length === 4) {
+    if (req.method === "GET"){
+      let info = []
+      fs.readFile(`./data/${directory}/${file}`, 'utf8', function (err, data) {
+        if (err) throw err;
+        res.end(data);
+      })
+    }
+  }
+  
 }).listen(8080); //the server object listens on port 8080
