@@ -1,8 +1,8 @@
 let http = require('http');
-let fs = require('fs');
 let url = require('url');
-const querystring = require('querystring');
+let db = require('./db/connection');
 
+db.createTable()
 //create a server object:
 http.createServer(function (req, res) {
   console.log("method" + req.method);
@@ -20,42 +20,70 @@ http.createServer(function (req, res) {
   let path = r.split('/');
   let cat = path[1]
   let directory = path[2]
-  let file = path[3];
+  let id = path[3];
   let nameFile = ""
 
   console.log(r)
   console.log(path)
 
   if (req.method === "GET") {
-
     if (r === `/${cat}` && path.length === 2) {
       let info = []
-      fs.readdirSync(`./data`).forEach(file => {
-        info.push(file);
-      })
-      res.end(JSON.stringify(info));
+      // select all categories from db
+      db.connectDb()
+        .all(`SELECT name FROM category`, (err, rows) => {
+          if (err) { throw err; }
+          let data = rows
+          data.forEach((row) => {
+            info.push(row.name)
+          })
+          res.end(JSON.stringify(info));
+        })
     }
 
     if (r === `/${cat}/${directory}` && path.length === 3) {
       let info = []
-      fs.readdirSync(`./data/${directory}`).forEach(file => {
-        info.push(file);
-      })
-      res.end(JSON.stringify(info));
+      let categoryId = 0
+      // select all articles in category from db
+      db.connectDb()
+        .all(`SELECT id FROM category WHERE name = ?`, directory, (err, row) => {
+          if (err) {
+            throw err;
+          }
+          categoryId = row[0].id
+          db.connectDb().all(`SELECT id, title FROM article WHERE category = ?`, categoryId, (err, rows) => {
+            if (err) { throw err; }
+            let data = rows
+            data.forEach((row) => {
+              info.push(`[ID: ${row.id}] ${row.title}`)
+            })
+            res.end(JSON.stringify(info));
+          })
+        })
     }
 
-    if (r === `/${cat}/${directory}/${file}` && path.length === 4) {
-      fs.readFile(`./data/${directory}/${file}`, 'utf8', function (err, data) {
-        if (err) throw err;
-        res.end(data);
-      })
-    }
-  }
+    if (r === `/${cat}/${directory}/${id}` && path.length === 4) {
+      let info = []
+      let categoryId = 0
+      // select an article from db
+      db.connectDb()
+        .all(`SELECT id FROM category WHERE name = ?`, directory, (err, row) => {
+          if (err) {
+            throw err;
+          }
+          categoryId = row[0].id
+          db.connectDb().all(`SELECT id, title, content, excerpt, date FROM article WHERE category = ? AND id = ?`, categoryId, id, (err, rows) => {
+            if (err) { throw err; }
+            res.end(JSON.stringify(Object.assign(rows[0], {category: directory})));
+          })
+        })
+    }}
 
   if(req.method === "POST") {
     if (r === `/${cat}/${directory}` && path.length === 3) {
       let body = "";
       let myData = ""
+      let categoryId = 0
 
       let today = new Date();
       let date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
@@ -66,30 +94,14 @@ http.createServer(function (req, res) {
       req.on('data', chunk => {
         body = chunk.toString();
         myData = JSON.parse(body)
-        console.log(myData)
 
-        console.log("woop")
-        console.log(myData)
-        console.log("MTSF:" + myTimeStampFile)
-
-        if (myData.id === "") {
-          nameFile = myTimeStampFile + "_" + myData.title.replace(/[^a-zA-Z0-9]/g, '_');
-          console.log("no_id " + nameFile)
-        } else if (myData.id !== "") {
-          nameFile = myTimeStampFile + "_" + (myData.id);
-          console.log("id " + nameFile)
-        }
-      })
-
-      req.on('end', () => {
-        fs.writeFile(`./data/${directory}/${nameFile}.json`, JSON.stringify(myData), function (err) {
-          if (err) throw err;
-          console.log('Saved!');
-        })
-      });
+        db.connectDb().all(`SELECT id FROM category WHERE name = ?`, myData.category, (err, row) => {
+          if (err) { throw err; }
+          categoryId = row[0].id
+          db.insertData(myData.title, myData.content, myData.excerpt, categoryId , myData.timestamp)
+        })})
       res.end('ok');
-    }
-  }
+    }}
 
   if(req.method === "OPTIONS") {
     res.end('ok');
