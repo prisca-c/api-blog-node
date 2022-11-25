@@ -126,6 +126,13 @@ http.createServer(function (req, res) {
           })
         })
     }
+
+    if (r === `/${cat}` && path.length === 2) {
+      db.connectDb().run(`DELETE FROM category WHERE name = ?`, directory, (err) => {
+        if (err) { throw err; }
+        res.end('ok');
+      })
+    }
   }
 
   if(req.method === "OPTIONS") {
