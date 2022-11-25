@@ -101,7 +101,18 @@ http.createServer(function (req, res) {
           db.insertData(myData.title, myData.content, myData.excerpt, categoryId , myData.timestamp)
         })})
       res.end('ok');
-    }}
+    }
+    if (r === `/${cat}` && path.length === 2) {
+      let body = "";
+      let myData = ""
+      req.on('data', chunk => {
+        body = chunk.toString();
+        myData = JSON.parse(body)
+        db.insertCategory(myData.name)
+      })
+      res.end('ok');
+    }
+  }
 
   if(req.method === "OPTIONS") {
     res.end('ok');

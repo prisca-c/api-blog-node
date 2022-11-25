@@ -47,7 +47,19 @@ const insertData = (title, content, excerpt, category, date) => {
   db.close();
 }
 
+const insertCategory = (name) => {
+  db = connectDb()
+  db.run(`INSERT INTO category (name) VALUES (?)`, name, function (err) {
+    if (err) {
+      return console.log(err.message);
+    }
+    console.log(`Save`);
+  });
+  db.close();
+}
+
 exports.createTable = createTable;
 exports.connectDb = connectDb;
 exports.insertData = insertData;
+exports.insertCategory = insertCategory;
 
