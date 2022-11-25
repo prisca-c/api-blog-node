@@ -21,7 +21,6 @@ http.createServer(function (req, res) {
   let cat = path[1]
   let directory = path[2]
   let id = path[3];
-  let nameFile = ""
 
   console.log(r)
   console.log(path)
@@ -63,7 +62,6 @@ http.createServer(function (req, res) {
     }
 
     if (r === `/${cat}/${directory}/${id}` && path.length === 4) {
-      let info = []
       let categoryId = 0
       // select an article from db
       db.connectDb()
@@ -85,12 +83,6 @@ http.createServer(function (req, res) {
       let myData = ""
       let categoryId = 0
 
-      let today = new Date();
-      let date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
-      let time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-
-      let myTimeStampFile = (date + time).replace(/[^a-zA-Z0-9]/g, '');
-
       req.on('data', chunk => {
         body = chunk.toString();
         myData = JSON.parse(body)
@@ -111,6 +103,23 @@ http.createServer(function (req, res) {
         db.insertCategory(myData.name)
       })
       res.end('ok');
+    }
+  }
+
+  if(req.method === "DELETE") {
+    if (r === `/${cat}/${directory}/${id}` && path.length === 4) {
+      let categoryId = 0
+      db.connectDb()
+        .all(`SELECT id FROM category WHERE name = ?`, directory, (err, row) => {
+          if (err) {
+            throw err;
+          }
+          categoryId = row[0].id
+          db.connectDb().run(`DELETE FROM article WHERE category = ? AND id = ?`, categoryId, id, (err) => {
+            if (err) { throw err; }
+            res.end('ok');
+          })
+        })
     }
   }
 
