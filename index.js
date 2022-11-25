@@ -50,12 +50,17 @@ http.createServer(function (req, res) {
             throw err;
           }
           categoryId = row[0].id
+          console.log(row)
           db.connectDb().all(`SELECT id, title FROM article WHERE category = ?`, categoryId, (err, rows) => {
             if (err) { throw err; }
             let data = rows
-            data.forEach((row) => {
-              info.push(`[ID: ${row.id}] ${row.title}`)
-            })
+            if(rows.length > 0) {
+              data.forEach((row) => {
+                info.push(`[ID: ${row.id}] ${row.title}`)
+              })
+            } else {
+              info.push('No articles found')
+            }
             res.end(JSON.stringify(info));
           })
         })
